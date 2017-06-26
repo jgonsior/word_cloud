@@ -24,6 +24,8 @@ from PIL import ImageFont
 from .query_integral_image import query_integral_image
 from .tokenization import unigrams_and_bigrams, process_tokens
 
+from pprint import pprint
+
 item1 = itemgetter(1)
 
 FONT_PATH = os.environ.get("FONT_PATH", os.path.join(os.path.dirname(__file__),
@@ -33,6 +35,7 @@ STOPWORDS = set([x.strip() for x in open(
 
 
 class IntegralOccupancyMap(object):
+
     def __init__(self, height, width, mask):
         self.height = height
         self.width = width
@@ -98,6 +101,7 @@ class colormap_color_func(object):
     >>> WordCloud(color_func=colormap_color_func("magma"))
 
     """
+
     def __init__(self, colormap):
         import matplotlib.pyplot as plt
         self.colormap = plt.cm.get_cmap(colormap)
@@ -672,4 +676,28 @@ class WordCloud(object):
         return self.to_array()
 
     def to_html(self):
-        raise NotImplementedError("FIXME!!!")
+        self._check_generated()
+
+        if self.mask is not None:
+            width = self.mask.shape[1]
+            height = self.mask.shape[0]
+        else:
+            height, width = self.height, self.width
+
+        result = '<html><head><link href="https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/html5resetcss/html5reset-1.6.1.css" rel="stylesheet">'+\
+        '<link href="https://fonts.googleapis.com/css?family=Droid+Sans+Mono" rel="stylesheet">'+\
+        '</head><body><ul style="width:'+str(width)+'px; height: '+str(height)+'px; background: black; position: absolute; top:0;left:0;">\n'
+
+        for (word, count), font_size, position, orientation, color in self.layout_:
+            left = str(position[1] *1.0)
+            top = str(position[0] *1.0)
+            transform = ""
+
+            if orientation is not None:
+                transform = "transform: rotate(270deg); transform-origin: left top;"
+
+            result += '<li style="display: inline; list-style: none; margin: 0; padding: 0; font-family: \'Droid Sans Mono\', monospace;' + transform + 'position: absolute; color: ' + color + '; top: ' + \
+                top + 'px; left: ' + left + 'px; font-size: ' + str(font_size) + 'px">' + word + '</li>\n'
+
+        result += '<li style="color: red; z-index: 9000; background: gray; position: absolute; top: 0; left: 0; margin: 0; padding: 0; list-style: none; font-family: \'Droid Sans Mono\'">Aber </li></ul>'
+        return result
