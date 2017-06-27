@@ -11,14 +11,12 @@ from wordcloud import WordCloud
 d = path.dirname(__file__)
 
 # Read the whole text.
-text = open(path.join(d, 'constitution.txt')).read()
+#text = open(path.join(d, 'constitution.txt')).read()
+text = "hallo hallo hallo hallo hallo hallo hallo test test ich ich du er sie es wir ihr sie und was soll ich dann nun tun?"
 # Generate a word cloud image
 wordcloud = WordCloud().generate(text)
 
-print(wordcloud.to_html())
+with open("test.htm", "w") as file:
+    file.write(wordcloud.to_html())
 
-import matplotlib.pyplot as plt
-plt.imshow(wordcloud, interpolation='bilinear')
-plt.axis("off")
-
-#plt.show()
+wordcloud.to_file("test.png")

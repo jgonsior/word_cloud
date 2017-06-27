@@ -84,7 +84,7 @@ def random_color_func(word=None, font_size=None, position=None,
 
     """
     if random_state is None:
-        random_state = Random()
+        random_state = Random(5)
     return "hsl(%d, 80%%, 50%%)" % random_state.randint(0, 255)
 
 
@@ -109,7 +109,7 @@ class colormap_color_func(object):
     def __call__(self, word, font_size, position, orientation,
                  random_state=None, **kwargs):
         if random_state is None:
-            random_state = Random()
+            random_state = Random(5)
         r, g, b, _ = 255 * np.array(self.colormap(random_state.uniform(0, 1)))
         return "rgb({:.0f}, {:.0f}, {:.0f})".format(r, g, b)
 
@@ -144,7 +144,7 @@ def get_single_color_func(color):
 
         """
         if random_state is None:
-            random_state = Random()
+            random_state = Random(5)
         r, g, b = colorsys.hsv_to_rgb(h, s, random_state.uniform(0.2, 1))
         return 'rgb({:.0f}, {:.0f}, {:.0f})'.format(r * rgb_max, g * rgb_max,
                                                     b * rgb_max)
@@ -352,6 +352,7 @@ class WordCloud(object):
         """
         # make sure frequencies are sorted and normalized
         frequencies = sorted(frequencies.items(), key=item1, reverse=True)
+
         if len(frequencies) <= 0:
             raise ValueError("We need at least 1 word to plot a word cloud, "
                              "got %d." % len(frequencies))
@@ -366,7 +367,7 @@ class WordCloud(object):
         if self.random_state is not None:
             random_state = self.random_state
         else:
-            random_state = Random()
+            random_state = Random(5)
 
         if self.mask is not None:
             mask = self.mask
@@ -438,12 +439,22 @@ class WordCloud(object):
                 # transpose font optionally
                 transposed_font = ImageFont.TransposedFont(
                     font, orientation=orientation)
+
                 # get size of resulting text
+                # @todo: return true html/css size!
                 box_size = draw.textsize(word, font=transposed_font)
+                draw.rectangle([(int(box_size[1] + self.margin), int(box_size[0] + self.margin)), (int(
+                    box_size[1] + self.margin + 15), int(box_size[0] + self.margin + 15))], fill="white")
+
                 # find possible places using integral image:
                 result = occupancy.sample_position(box_size[1] + self.margin,
                                                    box_size[0] + self.margin,
                                                    random_state)
+                print(word)
+                print(
+                    "box-size:" + str(box_size[1] + self.margin) + " " + str(box_size[0] + self.margin))
+                print("IntegralOccupancyMap: ")
+                pprint(result)
                 if result is not None or font_size < self.min_font_size:
                     # either we found a place or font-size went too small
                     break
@@ -481,6 +492,11 @@ class WordCloud(object):
             # the order of the cumsum's is important for speed ?!
             occupancy.update(img_array, x, y)
             last_freq = freq
+            import matplotlib.pyplot as plt
+            plt.figure()
+            plt.imshow(img_grey, interpolation="bilinear")
+            plt.axis("off")
+            plt.show()
 
         self.layout_ = list(zip(frequencies, font_sizes, positions,
                                 orientations, colors))
@@ -594,6 +610,8 @@ class WordCloud(object):
             pos = (int(position[1] * self.scale),
                    int(position[0] * self.scale))
             draw.text(pos, word, fill=color, font=transposed_font)
+            draw.rectangle((int(position[1] * self.scale), int(position[0] * self.scale), int(
+                (position[1] + 5) * self.scale), int((position[0] + 5) * self.scale)), fill=(255, 255, 255, 210))
         return img
 
     def recolor(self, random_state=None, color_func=None, colormap=None):
@@ -684,20 +702,22 @@ class WordCloud(object):
         else:
             height, width = self.height, self.width
 
-        result = '<html><head><link href="https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/html5resetcss/html5reset-1.6.1.css" rel="stylesheet">'+\
-        '<link href="https://fonts.googleapis.com/css?family=Droid+Sans+Mono" rel="stylesheet">'+\
-        '</head><body><ul style="width:'+str(width)+'px; height: '+str(height)+'px; background: black; position: absolute; top:0;left:0;">\n'
+        result = '<html><head><link href="https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/html5resetcss/html5reset-1.6.1.css" rel="stylesheet">' +\
+            '<link href="https://fonts.googleapis.com/css?family=Droid+Sans+Mono" rel="stylesheet">' +\
+            '</head><body><ul style="width:' + str(width) + 'px; height: ' + str(
+                height) + 'px; background:black; position: absolute; top:0;left:0;">\n'
 
         for (word, count), font_size, position, orientation, color in self.layout_:
-            left = str(position[1] *1.0)
-            top = str(position[0] *1.0)
+            left = str(position[1])
+            top = str(position[0])
             transform = ""
 
             if orientation is not None:
-                transform = "transform: rotate(270deg); transform-origin: left top;"
+                transform = "transform: rotate(270deg); transform-origin: 50% 90% 0;"
 
-            result += '<li style="display: inline; list-style: none; margin: 0; padding: 0; font-family: \'Droid Sans Mono\', monospace;' + transform + 'position: absolute; color: ' + color + '; top: ' + \
-                top + 'px; left: ' + left + 'px; font-size: ' + str(font_size) + 'px">' + word + '</li>\n'
+            result += '<li style="background-color:rgba(255, 255, 255, 0.5); padding-left: 5.5em; display: inline; list-style: none; margin: 0; padding: 0; font-family: \'Droid Sans Mono\', monospace;' + transform + 'position: absolute; color: ' + color + '; top: ' + \
+                top + 'px; left: ' + left + 'px; font-size: ' + \
+                str(font_size) + 'px">' + word + '</li>\n'
 
-        result += '<li style="color: red; z-index: 9000; background: gray; position: absolute; top: 0; left: 0; margin: 0; padding: 0; list-style: none; font-family: \'Droid Sans Mono\'">Aber </li></ul>'
+        result += '<li style="color: red; z-index: 9000; background: gray; position: absolute; top: 0; left: 0; margin: 0; padding: 0; list-style: none; font-family: \'Droid Sans Mono\'"></li></ul>'
         return result
