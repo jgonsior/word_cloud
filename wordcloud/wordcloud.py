@@ -7,24 +7,24 @@
 
 from __future__ import division
 
-import warnings
-from random import Random
+import colorsys
 import os
 import re
 import sys
-import colorsys
-import numpy as np
+import warnings
 from operator import itemgetter
+from pprint import pprint
+from random import Random
 
+import numpy as np
 from PIL import Image
 from PIL import ImageColor
 from PIL import ImageDraw
 from PIL import ImageFont
 
+from .fakeCanvasImg import fakeCanvasImg
 from .query_integral_image import query_integral_image
 from .tokenization import unigrams_and_bigrams, process_tokens
-
-from pprint import pprint
 
 item1 = itemgetter(1)
 
@@ -35,7 +35,6 @@ STOPWORDS = set([x.strip() for x in open(
 
 
 class IntegralOccupancyMap(object):
-
     def __init__(self, height, width, mask):
         self.height = height
         self.width = width
@@ -148,6 +147,7 @@ def get_single_color_func(color):
         r, g, b = colorsys.hsv_to_rgb(h, s, random_state.uniform(0.2, 1))
         return 'rgb({:.0f}, {:.0f}, {:.0f})'.format(r * rgb_max, g * rgb_max,
                                                     b * rgb_max)
+
     return single_color_func
 
 
@@ -390,9 +390,8 @@ class WordCloud(object):
         occupancy = IntegralOccupancyMap(height, width, boolean_mask)
 
         # create image
-        img_grey = Image.new("L", (width, height))
-        draw = ImageDraw.Draw(img_grey)
-        img_array = np.asarray(img_grey)
+        fakeCanvas = fakeCanvasImg(width, height)
+
         font_sizes, positions, orientations, colors = [], [], [], []
 
         last_freq = 1.
@@ -441,7 +440,7 @@ class WordCloud(object):
                     font, orientation=orientation)
 
                 # get size of resulting text
-                box_size = draw.textsize(word, font=transposed_font)
+                box_size = fakeCanvas.getBoxSize(word, transposed_font)
 
                 # find possible places using integral image:
                 result = occupancy.sample_position(box_size[1] + self.margin,
@@ -471,7 +470,8 @@ class WordCloud(object):
 
             x, y = np.array(result) + self.margin // 2
             # actually draw the text
-            draw.text((y, x), word, fill="white", font=transposed_font)
+            fakeCanvas.drawText((y, x), word, fill="white", font=transposed_font)
+
             positions.append((x, y))
             orientations.append(orientation)
             font_sizes.append(font_size)
@@ -482,9 +482,9 @@ class WordCloud(object):
                                           font_path=self.font_path))
             # recompute integral image
             if self.mask is None:
-                img_array = np.asarray(img_grey)
+                img_array = fakeCanvas.getNpArray()
             else:
-                img_array = np.asarray(img_grey) + boolean_mask
+                img_array = fakeCanvas.getNpArray() + boolean_mask
             # recompute bottom right
             # the order of the cumsum's is important for speed ?!
             occupancy.update(img_array, x, y)
@@ -699,17 +699,17 @@ class WordCloud(object):
         else:
             height, width = self.height, self.width
 
-        result = '<html><head><link href="https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/html5resetcss/html5reset-1.6.1.css" rel="stylesheet">' +\
-            '<link href="https://fonts.googleapis.com/css?family=Droid+Sans+Mono" rel="stylesheet">' +\
-            '</head><body><ul style="width:' + str(width) + 'px; height: ' + str(
-                height) + 'px; background-image:url(test.png); position: absolute; top:0;left:0;">\n'
+        result = '<html><head><link href="https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/html5resetcss/html5reset-1.6.1.css" rel="stylesheet">' + \
+                 '<link href="https://fonts.googleapis.com/css?family=Droid+Sans+Mono" rel="stylesheet">' + \
+                 '</head><body><ul style="width:' + str(width) + 'px; height: ' + str(
+            height) + 'px; background-image:url(test.png); position: absolute; top:0;left:0;">\n'
 
         for (word, count), font_size, position, orientation, color in self.layout_:
             transform = ""
 
             rot = -90 if orientation else 0
-            left = str(position[1]+font_size if orientation else position[1])
-            top =  str(position[0] if orientation else position[0] - font_size/3)
+            left = str(position[1] + font_size if orientation else position[1])
+            top = str(position[0] if orientation else position[0] - font_size / 3)
             values = {
                 "top": top,
                 "left": left,
@@ -720,15 +720,15 @@ class WordCloud(object):
 
             if orientation is not None:
                 result += '<li style="background-color:rgba(255, 255, 255, 0.5); padding-left: 5.5em; display: inline; list-style: none; margin: 0; padding: 0;' + \
-                    'font-family: \'Droid Sans Mono\', monospace;' + transform + 'position: absolute; color: ' + color + '; top: ' + \
-                    top + 'px; left: ' + left + 'px; font-size: ' + \
-                    str(font_size) + 'px">' + word + '</li>\n'
+                          'font-family: \'Droid Sans Mono\', monospace;' + transform + 'position: absolute; color: ' + color + '; top: ' + \
+                          top + 'px; left: ' + left + 'px; font-size: ' + \
+                          str(font_size) + 'px">' + word + '</li>\n'
                 transform = "transform: rotate(-90deg); transform-origin: " + left + " " + top + " 0;"
-                left = str(int(left) - font_size*1.7)
+                left = str(int(left) - font_size * 1.7)
 
             result += '<li style="background-color:rgba(255, 255, 255, 0.5); padding-left: 5.5em; display: inline; list-style: none; margin: 0; padding: 0;' + \
-                'font-family: \'Droid Sans Mono\', monospace;' + transform + 'position: absolute; color: ' + color + '; top: ' + \
-                top + 'px; left: ' + left + 'px; font-size: ' + \
-                str(font_size) + 'px">' + word + '</li>\n'
+                      'font-family: \'Droid Sans Mono\', monospace;' + transform + 'position: absolute; color: ' + color + '; top: ' + \
+                      top + 'px; left: ' + left + 'px; font-size: ' + \
+                      str(font_size) + 'px">' + word + '</li>\n'
 
         return result
