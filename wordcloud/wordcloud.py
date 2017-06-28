@@ -441,10 +441,7 @@ class WordCloud(object):
                     font, orientation=orientation)
 
                 # get size of resulting text
-                # @todo: return true html/css size!
                 box_size = draw.textsize(word, font=transposed_font)
-                draw.rectangle([(int(box_size[1] + self.margin), int(box_size[0] + self.margin)), (int(
-                    box_size[1] + self.margin + 15), int(box_size[0] + self.margin + 15))], fill="white")
 
                 # find possible places using integral image:
                 result = occupancy.sample_position(box_size[1] + self.margin,
@@ -492,12 +489,12 @@ class WordCloud(object):
             # the order of the cumsum's is important for speed ?!
             occupancy.update(img_array, x, y)
             last_freq = freq
-            import matplotlib.pyplot as plt
+            '''import matplotlib.pyplot as plt
             plt.figure()
             plt.imshow(img_grey, interpolation="bilinear")
             plt.axis("off")
             plt.show()
-
+'''
         self.layout_ = list(zip(frequencies, font_sizes, positions,
                                 orientations, colors))
         return self
@@ -705,19 +702,33 @@ class WordCloud(object):
         result = '<html><head><link href="https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/html5resetcss/html5reset-1.6.1.css" rel="stylesheet">' +\
             '<link href="https://fonts.googleapis.com/css?family=Droid+Sans+Mono" rel="stylesheet">' +\
             '</head><body><ul style="width:' + str(width) + 'px; height: ' + str(
-                height) + 'px; background:black; position: absolute; top:0;left:0;">\n'
+                height) + 'px; background-image:url(test.png); position: absolute; top:0;left:0;">\n'
 
         for (word, count), font_size, position, orientation, color in self.layout_:
-            left = str(position[1])
-            top = str(position[0])
             transform = ""
 
-            if orientation is not None:
-                transform = "transform: rotate(270deg); transform-origin: 50% 90% 0;"
+            rot = -90 if orientation else 0
+            left = str(position[1]+font_size if orientation else position[1])
+            top =  str(position[0] if orientation else position[0] - font_size/3)
+            values = {
+                "top": top,
+                "left": left,
+                "word": word,
+                "font_size": font_size,
+                "class": "rot" if orientation else "norm"
+            }
 
-            result += '<li style="background-color:rgba(255, 255, 255, 0.5); padding-left: 5.5em; display: inline; list-style: none; margin: 0; padding: 0; font-family: \'Droid Sans Mono\', monospace;' + transform + 'position: absolute; color: ' + color + '; top: ' + \
+            if orientation is not None:
+                result += '<li style="background-color:rgba(255, 255, 255, 0.5); padding-left: 5.5em; display: inline; list-style: none; margin: 0; padding: 0;' + \
+                    'font-family: \'Droid Sans Mono\', monospace;' + transform + 'position: absolute; color: ' + color + '; top: ' + \
+                    top + 'px; left: ' + left + 'px; font-size: ' + \
+                    str(font_size) + 'px">' + word + '</li>\n'
+                transform = "transform: rotate(-90deg); transform-origin: " + left + " " + top + " 0;"
+                left = str(int(left) - font_size*1.7)
+
+            result += '<li style="background-color:rgba(255, 255, 255, 0.5); padding-left: 5.5em; display: inline; list-style: none; margin: 0; padding: 0;' + \
+                'font-family: \'Droid Sans Mono\', monospace;' + transform + 'position: absolute; color: ' + color + '; top: ' + \
                 top + 'px; left: ' + left + 'px; font-size: ' + \
                 str(font_size) + 'px">' + word + '</li>\n'
 
-        result += '<li style="color: red; z-index: 9000; background: gray; position: absolute; top: 0; left: 0; margin: 0; padding: 0; list-style: none; font-family: \'Droid Sans Mono\'"></li></ul>'
         return result

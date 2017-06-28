@@ -7,3 +7,10 @@ doc/auto_examples
 doc/generated
 .venv/
 .idea/
+.venv
+test.htm
+test.png
+word_cloud.iml
+wordcloud.egg-info/
+wordcloud/__pycache__/
+wordcloud/query_integral_image.cpython-36m-x86_64-linux-gnu.so
