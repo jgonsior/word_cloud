@@ -23,6 +23,7 @@ from PIL import ImageDraw
 from PIL import ImageFont
 
 from .fakeCanvasImg import fakeCanvasImg
+from .fakeCanvasHtml import fakeCanvasHtml
 from .query_integral_image import query_integral_image
 from .tokenization import unigrams_and_bigrams, process_tokens
 
@@ -390,7 +391,7 @@ class WordCloud(object):
         occupancy = IntegralOccupancyMap(height, width, boolean_mask)
 
         # create image
-        fakeCanvas = fakeCanvasImg(width, height)
+        fakeCanvas = fakeCanvasHtml(width, height)
 
         font_sizes, positions, orientations, colors = [], [], [], []
 
@@ -433,14 +434,9 @@ class WordCloud(object):
                 orientation = Image.ROTATE_90
             tried_other_orientation = False
             while True:
-                # try to find a position
-                font = ImageFont.truetype(self.font_path, font_size)
-                # transpose font optionally
-                transposed_font = ImageFont.TransposedFont(
-                    font, orientation=orientation)
 
                 # get size of resulting text
-                box_size = fakeCanvas.getBoxSize(word, transposed_font)
+                box_size = fakeCanvas.getBoxSize(word, self.font_path, font_size, orientation)
 
                 # find possible places using integral image:
                 result = occupancy.sample_position(box_size[1] + self.margin,
@@ -470,7 +466,7 @@ class WordCloud(object):
 
             x, y = np.array(result) + self.margin // 2
             # actually draw the text
-            fakeCanvas.drawText((y, x), word, fill="white", font=transposed_font)
+            fakeCanvas.drawText((y, x), word, self.font_path, font_size, orientation, fill="white")
 
             positions.append((x, y))
             orientations.append(orientation)
